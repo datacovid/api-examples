@@ -94,11 +94,10 @@ kable(comptedepartement)
 ```
 
 ```{r}
-france$comptedepartement=comptedepartement
+france$comptedepartement=rep(0,length(france$CC_2))
 france$comptedepartement[order(france$CC_2)]=comptedepartement
 couleurs <- colorRampPalette(c('white', 'magenta'))
-head(comptedepartement)
-spplot(france, "comptedepartement", col.regions=couleurs(30),  main=list(label="Nombre de participants par département",cex=.8))
+spplot(france, "comptedepartement", col.regions=couleurs(max(comptedepartement)),  main=list(label="Nombre de participants par département",cex=.8))
 ```
 
 - Distribution du nombre de pièces
