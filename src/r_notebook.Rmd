@@ -13,23 +13,25 @@ knitr::opts_chunk$set(echo = TRUE)
 library(rjson)
 library(ggplot2)
 library(knitr)
+library(dplyr)
+library(raster)
 ```
 
 ## Téléchargement des données
 
 Nous allons télécharger des données de la première vague, et spécifiquement les champs suivants:
 
-- age;
-- sortiesEn24h;
-- confinementPieces;
-- confinementNbPersonnes;
-- diplome;
-- confinementResidenceHabituelle;
-- preoccupation1;
-- penseInfecte
+- "age";
+- "sortiesEn24h";
+- "confinementPieces";
+- "confinementNbPersonnes";
+- "diplome";
+- "confinementResidenceHabituelle";
+- "preoccupation1";
+- "penseInfecte".
 
 ```{r}
-url="http://datacovid.org/api/answers/1/age;sortiesEn24h;confinementPieces;confinementNbPersonnes;diplome;confinementResidenceHabituelle;preoccupation1;penseInfecte"
+url="http://datacovid.org/api/answers/1/age;sortiesEn24h;confinementPieces;confinementNbPersonnes;diplome;confinementResidenceHabituelle;preoccupation1;penseInfecte;departement"
 result = fromJSON(file = url)
 
 results = lapply(result$data, function(x) {
@@ -42,7 +44,16 @@ results = lapply(result$data, function(x) {
 
 ```{r}
 # Catégories d'âge
-agecategories=c("18-24","25-29","30-34","35-39","40-44","45-49","50-54","55-59","60-64",">=65")
+agescategories=c("18-24","25-29","30-34","35-39","40-44","45-49","50-54","55-59","60-64",">=65")
+agecategories=data.frame(agecat=factor(agescategories,levels=agescategories))
+
+# Réponses Oui/Non/NA
+reponseOuiNon=c("Oui","Non","N/A")
+reponseOuiNon=data.frame(reponse=factor(reponseOuiNon,levels=reponseOuiNon))
+
+# Voir description plus précise des catégories dans la documentation
+diplomecategories=c("Sans diplôme","Brevet","CAP/BEP","Baccalauréat","Bac +1/+2",">Bac +3","Autre","N/A")
+diplomecategories=data.frame(diplomecat=factor(diplomecategories,levels=diplomecategories))
 
 
 results$age = as.numeric(unlist(results$age))
@@ -53,6 +64,11 @@ results$diplome = as.numeric(unlist(results$diplome))
 results$penseInfecte = as.numeric(unlist(results$penseInfecte))
 results$confinementResidenceHabituelle = as.numeric(unlist(results$confinementResidenceHabituelle))
 results$age = as.numeric(unlist(results$age))
+results$departement = as.numeric(unlist(results$departement))
+results$departement[results$departement==96]=29.2
+results$departement[results$departement==20]=29.1
+
+results=as.data.frame.list(results)
 ```
 
 ## Description de quelques champs
@@ -60,16 +76,47 @@ results$age = as.numeric(unlist(results$age))
 
 - Distribution de l'âge
 ```{r}
-hist(results$age)
+results=merge(results,agecategories, by.x = "age",by.y="row.names",)
+ggplot(results,aes(x=as.factor(agecat)))+
+  geom_bar(color="black",fill="white")+
+  geom_text(stat='count', aes(label=..count..), vjust=-1)+
+  theme_minimal()+
+  xlab("Catégorie d'âge")+ylab("Nombre de participants")
+```
+
+- Distribution du département d'origine
+
+```{r}
+france = getData(name="GADM", country="FRA", level=2)
+comptedepartement=table(results$departement)
+names(comptedepartement)=france$NAME_2[order(france$CC_2)]
+kable(comptedepartement)
+```
+
+```{r}
+france$comptedepartement=comptedepartement
+france$comptedepartement[order(france$CC_2)]=comptedepartement
+couleurs <- colorRampPalette(c('white', 'magenta'))
+head(comptedepartement)
+spplot(france, "comptedepartement", col.regions=couleurs(30),  main=list(label="Nombre de participants par département",cex=.8))
 ```
 
 - Distribution du nombre de pièces
 ```{r}
-hist(results$confinementPieces)
+ggplot(results,aes(x=confinementPieces))+
+  geom_bar(color="black",fill="white")+
+  geom_text(stat='count', aes(label=..count..), vjust=-1)+
+  theme_minimal()+
+  xlab("Nombre de pièces")+ylab("Nombre de participants")
 ```
 - Distribution des diplomes
 ```{r}
-hist(results$diplome)
+results=merge(results,diplomecategories, by.x = "diplome",by.y="row.names")
+ggplot(results,aes(x=diplomecat))+
+  geom_bar(color="black",fill="white")+
+  geom_text(stat='count', aes(label=..count..), vjust=-1)+
+  theme_minimal()+
+  xlab("Plus haut diplôme")+ylab("Nombre de participants")
 ```
 
 - % des personnes qui se pensent infectées
@@ -79,11 +126,24 @@ names(tableinfectes)=c("Oui","Non","N/A")
 kable(tableinfectes)
 ```
 
+```{r}
+resultscp=merge(results,reponseOuiNon, by.x = "penseInfecte",by.y="row.names")
+
+ggplot(resultscp,aes(x=reponse))+
+  geom_bar(color="black",fill="white")+
+  geom_text(stat='count', aes(label=..count..), vjust=-1)+
+  theme_minimal()+
+  xlab("Pense avoir été infecté")+ylab("Nombre de participants")
+```
+
 - Nb de pièce par foyer, en catégories
+
 ```{r}
 results$confinementPiecesCat=paste(results$confinementPieces)
 results$confinementPiecesCat[results$confinementPieces==2 | results$confinementPieces==3] = "2-3"
 results$confinementPiecesCat[results$confinementPieces>6] = ">6"
+results$confinementPiecesCat=factor(results$confinementPiecesCat,levels=c("1","2-3","4","5","6",">6"))
+kable(table(results$confinementPiecesCat)/length(results$confinementPiecesCat))
 ```
 
 - Nb de personnes par foyer, en catégories
@@ -101,17 +161,37 @@ kable(table(results$confinementNbPersonnesCat)/length(results$confinementNbPerso
 sum(results$preoccupation1==1)/length(results$preoccupation1)
 ```
 
-- Le % de personnes qui se pensent infectés en fonction de la catégorie d'age
+- Le % de personnes qui se pensent infectés en fonction de la catégorie d'âge
 ```{r}
 tableage=table(results$age[results$penseInfecte==1])/table(results$age)
 names(tableage)=agecategories
 kable(tableage)
 ```
 
+```{r}
+resultscp=merge(results,agescategories, by.x = "age",by.y="row.names")
+resultscp=merge(resultscp,reponseOuiNon, by.x = "penseInfecte",by.y="row.names")
+resultscp$penseInfecte=resultscp$reponse
+ggplot(resultscp,aes(x=agecat,fill=penseInfecte))+
+  geom_bar(position="fill")+
+  theme_minimal()+  scale_fill_brewer(palette = "Set1") +
+  xlab("Âge")+ylab("Taux de participants par âge")
+```
+
 - % des participants qui ne sont pas confinés dans leur résidence habituelle, par âge
 
 ```{r}
 tableage=table(results$age[results$confinementResidenceHabituelle==2])/table(table(results$age))
-names(tableage)=agecategories
+names(tableage)=agecategories$agecat
 kable(tableage)
+```
+
+```{r}
+resultscp=merge(results,agescategories, by.x = "age",by.y="row.names")
+resultscp=merge(resultscp,reponseOuiNon, by.x = "confinementResidenceHabituelle",by.y="row.names")
+resultscp$confinementResidenceHabituelle=resultscp$reponse
+ggplot(resultscp,aes(x=agecat,fill=confinementResidenceHabituelle))+
+  geom_bar(position="fill")+
+  theme_minimal()+  scale_fill_brewer(palette = "Set1") +
+  xlab("Âge")+ylab("Taux de participants par âge")
 ```
