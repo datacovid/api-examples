@@ -1,8 +1,8 @@
 ---
 title: "datacovid.org Baromètre COVID19 - Exemples"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -31,7 +31,8 @@ Nous allons télécharger des données de la première vague, et spécifiquement
 - "penseInfecte".
 
 ```{r}
-url="http://datacovid.org/api/answers/1/age;sortiesEn24h;confinementPieces;confinementNbPersonnes;diplome;confinementResidenceHabituelle;preoccupation1;penseInfecte;departement"
+apikey="<token>"
+url=paste0("http://datacovid.org/api/answers/1/age;sortiesEn24h;confinementPieces;confinementNbPersonnes;diplome;confinementResidenceHabituelle;preoccupation1;penseInfecte;departement;region/",apikey)
 result = fromJSON(file = url)
 
 results = lapply(result$data, function(x) {
@@ -40,7 +41,7 @@ results = lapply(result$data, function(x) {
 })
 ```
 
-## Formattage des données
+## Formatage des données
 
 ```{r}
 # Catégories d'âge
@@ -55,6 +56,9 @@ reponseOuiNon=data.frame(reponse=factor(reponseOuiNon,levels=reponseOuiNon))
 diplomecategories=c("Sans diplôme","Brevet","CAP/BEP","Baccalauréat","Bac +1/+2",">Bac +3","Autre","N/A")
 diplomecategories=data.frame(diplomecat=factor(diplomecategories,levels=diplomecategories))
 
+regionscategories=c("Ile-de-France","Centre-Val de Loire","Bourgogne-Franche-Comté","Normandie","Hauts-de-France","Grand-Est","Pays de la Loire","Bretagne","Nouvelle Aquitaine","Occitanie","Auvergne-Rhône-Alpes","PACA + Corse")
+regionscategories=data.frame(regcat=factor(regionscategories,levels=regionscategories))
+
 
 results$age = as.numeric(unlist(results$age))
 results$confinementPieces = as.numeric(unlist(results$confinementPieces))
@@ -67,6 +71,7 @@ results$age = as.numeric(unlist(results$age))
 results$departement = as.numeric(unlist(results$departement))
 results$departement[results$departement==96]=29.2
 results$departement[results$departement==20]=29.1
+results$region = as.numeric(unlist(results$region))
 
 results=as.data.frame.list(results)
 ```
@@ -127,12 +132,26 @@ kable(tableinfectes)
 
 ```{r}
 resultscp=merge(results,reponseOuiNon, by.x = "penseInfecte",by.y="row.names")
-
 ggplot(resultscp,aes(x=reponse))+
   geom_bar(color="black",fill="white")+
   geom_text(stat='count', aes(label=..count..), vjust=-1)+
   theme_minimal()+
   xlab("Pense avoir été infecté")+ylab("Nombre de participants")
+```
+
+```{r}
+resultscp=merge(results,regionscategories, by.x = "region",by.y="row.names")
+resultscp=merge(resultscp,reponseOuiNon, by.x = "penseInfecte",by.y="row.names")
+ggplot(resultscp,aes(x=regcat,fill=reponse))+
+  geom_bar(position="fill")+
+  theme_minimal()+  scale_fill_brewer(palette = "Set1") +
+  xlab("Région")+ylab("Taux de participants par âge")
+```
+
+```{r}
+resultscp=merge(results,regionscategories, by.x = "region",by.y="row.names")
+tableinfectes=table(resultscp$regcat[resultscp$penseInfecte==1])/table(resultscp$regcat)
+kable(tableinfectes)
 ```
 
 - Nb de pièce par foyer, en catégories
