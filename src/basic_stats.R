@@ -2,7 +2,9 @@ library(rjson)
 library(ggplot2)
 
 # Téléchargement des données
-result = fromJSON(file = "http://datacovid.org/api/answers/1/age;sortiesEn24h;confinementPieces;confinementNbPersonnes;diplome;lavageMain;gelHydroAlcoolique;preoccupation1;penseInfecte")
+token="<token>"
+url=paste0("https://datacovid.org/api/answers/1/age;sortiesEn24h;confinementPieces;confinementNbPersonnes;diplome;lavageMain;gelHydroAlcoolique;preoccupation1;penseInfecte?token=",token)
+result = fromJSON(file = url)
 results = lapply(result$data, function(x) {
   x[sapply(x, is.null)] <- NA
   x
@@ -19,6 +21,8 @@ results$diplome = as.numeric(unlist(results$diplome))
 results$lavageMain = as.numeric(unlist(results$lavageMain))
 results$gelHydroAlcoolique = as.numeric(unlist(results$gelHydroAlcoolique))
 results$penseInfecte = as.numeric(unlist(results$penseInfecte))
+
+results=as.data.frame.list(results)
 
 # Distribution de l'âge
 hist(results$age)
