@@ -32,7 +32,7 @@ Nous allons télécharger des données de la première vague, et spécifiquement
 
 ```{r}
 apikey="<token>"
-url=paste0("http://datacovid.org/api/answers/1/age;sortiesEn24h;confinementPieces;confinementNbPersonnes;diplome;confinementResidenceHabituelle;preoccupation1;penseInfecte;departement;region/?token=",apikey)
+url=paste0("http://datacovid.org/api/answers/1/age;sortiesEn24h;confinementPieces;confinementNbPersonnes;diplome;confinementResidenceHabituelle;preoccupation1;penseInfecte;departement;region?token=",apikey)
 result = fromJSON(file = url)
 
 results = lapply(result$data, function(x) {
