@@ -19,16 +19,18 @@ library(raster)
 
 ## Téléchargement des données
 
-Nous allons télécharger des données de la première vague, et spécifiquement les champs suivants:
+Nous allons télécharger des données de la deuxième vague, et spécifiquement les champs suivants:
 
-- "age";
-- "sortiesEn24h";
-- "confinementPieces";
-- "confinementNbPersonnes";
-- "diplome";
-- "confinementResidenceHabituelle";
-- "preoccupation1";
-- "penseInfecte".
+- age;
+- personneARisque;
+- confinementPieces;
+- confinementNbPersonnes;
+- diplome;
+- confinementResidenceHabituelle;
+- preoccupation1;
+- penseInfecte;
+- departement;
+- region.
 
 ```{r}
 apikey="<token>"
